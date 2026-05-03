@@ -188,8 +188,8 @@ def startup():
     _check_deps()
 
     # init D-Bus service
-    svc = dbus_service.init(on_interrupt=on_wake)
-    svc.start()
+    dbus_service.init(on_interrupt=on_wake)
+    dbus_service.start()
 
     # init core engine
     engine.init(on_speak=on_speak, on_ui_update=on_ui_update)

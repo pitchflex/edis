@@ -33,36 +33,16 @@ DBUS_INTROSPECT_XML = f"""
 </node>
 """
 
-UI_STATES = {
-    "idle":       "IDLE",
-    "standby":    "STANDBY",
-    "listening":  "LISTENING",
-    "thinking":   "THINKING",
-    "responding": "RESPONDING",
-    "working":    "WORKING",
-}
-
 
 class EdisDBusService:
+    # pydbus reads this attribute for introspection
+    dbus = DBUS_INTROSPECT_XML
+
     def __init__(self, on_interrupt: Callable = None):
         self._state = "standby"
         self._on_interrupt = on_interrupt or (lambda: None)
-        self._bus = None
-        self._obj = None
 
-    def start(self):
-        try:
-            from pydbus import SessionBus
-            from gi.repository import GLib
-
-            bus = SessionBus()
-            bus.publish(settings.DBUS_SERVICE_NAME, self)
-            self._bus = bus
-            log.info(f"D-Bus service published: {settings.DBUS_SERVICE_NAME}")
-        except ImportError:
-            log.warning("pydbus not installed — UI extension won't connect. pip install pydbus")
-        except Exception as e:
-            log.warning(f"D-Bus service failed to start: {e}")
+    # ── D-Bus methods ─────────────────────────────────────────────────────────
 
     def SetState(self, state: str):
         self._state = state
@@ -80,13 +60,29 @@ class EdisDBusService:
     def GetState(self) -> str:
         return self._state
 
-    # signals (emitted by calling them)
-    StateChanged = ("StateChanged", "s")
-    NewLogEntry = ("NewLogEntry", "ss")
-    InterruptRequested = ("InterruptRequested", "")
+    def TriggerInterrupt(self):
+        self._on_interrupt()
+
+    # ── Signals — defined via pydbus.generic.signal ───────────────────────────
+
+
+def _make_service(on_interrupt):
+    """Build service with pydbus signals attached."""
+    try:
+        from pydbus.generic import signal as dbus_signal
+
+        class _Service(EdisDBusService):
+            StateChanged      = dbus_signal()
+            NewLogEntry       = dbus_signal()
+            InterruptRequested= dbus_signal()
+
+        return _Service(on_interrupt=on_interrupt)
+    except ImportError:
+        return EdisDBusService(on_interrupt=on_interrupt)
 
 
 _service: EdisDBusService | None = None
+_bus = None
 
 
 def get_service() -> EdisDBusService | None:
@@ -95,15 +91,36 @@ def get_service() -> EdisDBusService | None:
 
 def init(on_interrupt: Callable = None) -> EdisDBusService:
     global _service
-    _service = EdisDBusService(on_interrupt=on_interrupt)
+    _service = _make_service(on_interrupt)
     return _service
+
+
+def start():
+    global _bus
+    if _service is None:
+        return
+    try:
+        from pydbus import SessionBus
+        _bus = SessionBus()
+        _bus.publish(settings.DBUS_SERVICE_NAME, _service)
+        log.info(f"D-Bus service published: {settings.DBUS_SERVICE_NAME}")
+    except ImportError:
+        log.warning("pydbus not installed — extension UI won't connect. pip install pydbus")
+    except Exception as e:
+        log.warning(f"D-Bus service failed to start: {e}")
 
 
 def set_state(state: str):
     if _service:
-        _service.SetState(state)
+        try:
+            _service.SetState(state)
+        except Exception:
+            pass
 
 
 def add_log(role: str, text: str):
     if _service:
-        _service.AddLog(role, text)
+        try:
+            _service.AddLog(role, text)
+        except Exception:
+            pass

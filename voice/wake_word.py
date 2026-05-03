@@ -1,5 +1,4 @@
-# Wake word detection — openwakeword, runs in background thread
-# Fires callback when "edis" (or configured word) is detected.
+# Wake word detection — openwakeword v0.4.0, runs in background thread
 
 import logging
 import threading
@@ -17,7 +16,6 @@ _thread: threading.Thread | None = None
 
 
 def start(on_detected: Callable):
-    """Start wake word detection in background thread."""
     global _running, _thread
     _running = True
     _thread = threading.Thread(target=_listen_loop, args=(on_detected,), daemon=True)
@@ -32,39 +30,45 @@ def stop():
 
 def _listen_loop(on_detected: Callable):
     try:
-        import openwakeword
         from openwakeword.model import Model
+        import pathlib, openwakeword
 
-        # openwakeword comes with "hey_jarvis" and other models.
-        # For "edis" we use the closest available or a custom trained model.
-        # Custom model path: ~/.edis/wake_word/edis.onnx
+        oww_dir = pathlib.Path(openwakeword.__file__).parent
+
+        # use custom model if trained, otherwise fall back to hey_jarvis
         custom = settings.BASE_DIR / "wake_word" / "edis.onnx"
         if custom.exists():
-            oww = Model(wakeword_models=[str(custom)], inference_framework="onnx")
+            model_path = str(custom)
             log.info("Using custom EDIS wake word model")
         else:
-            oww = Model(wakeword_models=["hey_jarvis"], inference_framework="onnx")
+            model_path = str(oww_dir / "resources" / "models" / "hey_jarvis_v0.1.onnx")
             log.warning(
-                "Custom wake word model not found — using 'hey_jarvis' as placeholder. "
-                f"Train a custom model and place at {custom}"
+                f"Custom wake word not found at {custom}. "
+                "Using 'hey_jarvis' as stand-in — say 'hey jarvis' to activate. "
+                f"Train a custom model and place at {custom} for 'edis' wake word."
             )
 
-        chunk = 1280  # 80ms at 16kHz — openwakeword requirement
+        oww = Model(wakeword_model_paths=[model_path], vad_threshold=0.5)
+
+        chunk = 1280  # 80ms at 16kHz
         with sd.InputStream(samplerate=16000, channels=1,
                             dtype="int16", blocksize=chunk) as stream:
             while _running:
                 data, _ = stream.read(chunk)
                 audio = data.flatten().astype(np.int16)
                 oww.predict(audio)
-                for name, score in oww.prediction_buffer.items():
-                    latest = score[-1] if score else 0
-                    if latest >= settings.WAKE_SENSITIVITY:
-                        log.info(f"Wake word detected (score={latest:.2f})")
-                        oww.reset()
+
+                for name, scores in oww.prediction_buffer.items():
+                    score = scores[-1] if len(scores) else 0
+                    if score >= settings.WAKE_SENSITIVITY:
+                        log.info(f"Wake word detected (model={name}, score={score:.2f})")
+                        # reset buffer to avoid re-triggering
+                        for k in oww.prediction_buffer:
+                            oww.prediction_buffer[k] = [0.0] * len(oww.prediction_buffer[k])
                         on_detected()
                         break
 
     except ImportError:
-        log.error("openwakeword not installed. Wake word disabled. Run: pip install openwakeword")
+        log.error("openwakeword not installed. Run: pip install openwakeword")
     except Exception as e:
         log.error(f"Wake word listener crashed: {e}")
