@@ -67,11 +67,12 @@ LLM_VOICE_MODEL     = _get("llm", "voice_model", "groq")
 LLM_REASONING_MODEL = _get("llm", "reasoning_model", "gemini")
 LLM_VISION_MODEL    = _get("llm", "vision_model", "groq")
 
-GROQ_VOICE_MODEL    = "llama-3.3-70b-versatile"
-GROQ_VISION_MODEL   = "llama-3.2-11b-vision-preview"
-GROQ_REASON_MODEL   = "llama-3.3-70b-versatile"
-GEMINI_MODEL        = "gemini-1.5-flash"
-GEMINI_VISION_MODEL = "gemini-1.5-flash"
+# Llama 4 Scout: natively multimodal, handles chat + vision, free tier, 128K ctx
+GROQ_VOICE_MODEL    = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_VISION_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_REASON_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"
+GEMINI_MODEL        = "gemini-2.5-flash"
+GEMINI_VISION_MODEL = "gemini-2.5-flash"
 
 # ── Voice ─────────────────────────────────────────────────────────────────────
 HOTKEY             = _get("voice", "hotkey", "<Super>e")
