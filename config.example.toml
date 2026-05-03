@@ -4,8 +4,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [api]
-# Single key: groq_key = "gsk_abc"
-# Multiple keys for rotation: groq_keys = ["gsk_abc", "gsk_def", "gsk_xyz"]
+# Single key: groq_key        = ""
+# Multiple keys for rotation: groq_keys       = []
 # groq_keys takes priority over groq_key if both are set.
 
 groq_key        = ""          # free at console.groq.com
