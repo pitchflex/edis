@@ -43,6 +43,16 @@ class MemoryManager:
                                  context=context, metadata=metadata)
         if self._semantic_ok:
             self._semantic.add(mem_id, f"{key or ''} {content} {context or ''}")
+        # sync to Obsidian immediately
+        try:
+            from memory.obsidian_sync import write_memory
+            rows = self._store.get(key=key)
+            for r in rows:
+                if r["id"] == mem_id:
+                    write_memory(r)
+                    break
+        except Exception:
+            pass
         return mem_id
 
     def recall(self, query: str) -> list[dict]:
@@ -95,8 +105,16 @@ class MemoryManager:
 
     def log_episode(self, user_msg: str, edis_msg: str, tools_used: list = None):
         summary = f"User: {user_msg[:100]} | EDIS: {edis_msg[:100]}"
-        self._store.add_episode(summary, user_msg=user_msg,
-                                edis_msg=edis_msg, tools_used=tools_used)
+        ep_id = self._store.add_episode(summary, user_msg=user_msg,
+                                        edis_msg=edis_msg, tools_used=tools_used)
+        # sync episode to Obsidian
+        try:
+            from memory.obsidian_sync import write_episode
+            eps = self._store.get_episodes(limit=1)
+            if eps:
+                write_episode(eps[0])
+        except Exception:
+            pass
 
     def get_context_summary(self, query: str) -> str:
         """Build a memory context string to inject into the system prompt."""
@@ -124,9 +142,23 @@ class MemoryManager:
 
     def set_preference(self, context_type: str, actions: list):
         self._store.set_preference(context_type, actions)
+        try:
+            from memory.obsidian_sync import write_preference
+            pref = self._store.get_preference(context_type)
+            if pref:
+                write_preference(pref)
+        except Exception:
+            pass
 
     def record_preference_outcome(self, context_type: str, accepted: bool):
         self._store.record_preference_outcome(context_type, accepted)
+        try:
+            from memory.obsidian_sync import write_preference
+            pref = self._store.get_preference(context_type)
+            if pref:
+                write_preference(pref)
+        except Exception:
+            pass
 
 
 _manager: MemoryManager | None = None

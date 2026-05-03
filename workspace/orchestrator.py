@@ -50,6 +50,12 @@ class WorkspaceOrchestrator:
                 context="workspace",
             )
         log.info(f"Saved workspace mode '{name}' with {len(actions)} actions")
+        try:
+            from memory.obsidian_sync import write_workspace_mode, write_dashboard
+            write_workspace_mode(name, actions)
+            write_dashboard()
+        except Exception:
+            pass
 
     def extract_actions_from_description(self, mode_name: str, description: str) -> list:
         try:

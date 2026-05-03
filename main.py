@@ -189,6 +189,10 @@ def startup():
     pe = proactivity.init(on_speak=on_speak, on_ui=lambda msg: on_ui_update("edis", msg))
     pe.start()
 
+    # start Obsidian memory sync
+    from memory.obsidian_sync import start_background_sync
+    start_background_sync()
+
     # preload whisper model in background
     threading.Thread(target=stt.preload, daemon=True).start()
 
