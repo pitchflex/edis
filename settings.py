@@ -22,7 +22,6 @@ CHROMA_DIR     = MEMORY_DIR / "chroma"
 LOG_FILE       = BASE_DIR / "logs" / "edis.log"
 SCREENSHOT_TMP = BASE_DIR / "tmp" / "screen_check.png"
 PIPER_DIR      = BASE_DIR / "piper"
-OBSIDIAN_VAULT = Path.home() / "Documents" / "EDIS-Vault"
 
 # ── Load user config ──────────────────────────────────────────────────────────
 _cfg: dict = {}
@@ -162,7 +161,7 @@ BRIEFING_NEWS_TOPICS  = _get("briefing", "news_topics", [])
 # ── Obsidian ──────────────────────────────────────────────────────────────────
 OBSIDIAN_ENABLED    = _get("obsidian", "enabled", True)
 OBSIDIAN_VAULT      = Path(_get("obsidian", "vault_path",
-                        str(Path.home() / "Documents" / "EDIS-Vault")))
+                        str(Path.home() / "Documents" / "EDIS-Vault"))).expanduser()
 OBSIDIAN_SYNC_SECS  = _get("obsidian", "sync_interval_seconds", 30)
 
 # ── System ────────────────────────────────────────────────────────────────────

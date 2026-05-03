@@ -61,20 +61,17 @@ class MemoryManager:
 
         if self._semantic_ok:
             semantic_hits = self._semantic.search(query)
-            ids = [int(h["memory_id"]) for h in semantic_hits]
-            for mid in ids:
-                rows = self._store.get(key=None)
-                for r in rows:
-                    if r["id"] == mid:
-                        results.append(r)
-                        break
+            for hit in semantic_hits:
+                mem = self._store.get_by_id(int(hit["memory_id"]))
+                if mem:
+                    results.append(mem)
 
-        # also do keyword search and merge
-        keyword_hits = self._store.search(query)
+        # merge keyword search results, deduplicating by id
         seen_ids = {r["id"] for r in results}
-        for hit in keyword_hits:
+        for hit in self._store.search(query):
             if hit["id"] not in seen_ids:
                 results.append(hit)
+                seen_ids.add(hit["id"])
 
         return results[:settings.MEMORY_SEMANTIC_RESULTS]
 

@@ -66,6 +66,12 @@ class MemoriStore:
 
     # ── Memories ──────────────────────────────────────────────────────────────
 
+    def get_by_id(self, memory_id: int) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM memories WHERE id = ?", (memory_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
     def add(self, category: str, content: str, key: str = None,
             context: str = None, metadata: dict = None, confidence: float = 1.0) -> int:
         now = datetime.now().isoformat()

@@ -110,14 +110,17 @@ def voice_loop():
             try:
                 followup = stt.transcribe()
                 accepted = _is_affirmative(followup)
-                actions = _extract_actions(followup) if not accepted else []
+                # always extract actions — needed when user accepts an "ask"
+                # e.g. "play lofi and mute notifications" → stored as preference
+                actions = _extract_actions(followup)
 
                 pe.on_preference_response(followup, accepted, actions=actions or None)
 
-                if not accepted:
-                    # still process the original message
+                if accepted:
+                    # confirmed — acknowledge and execute the original request
                     response = eng.process(user_input)
                 else:
+                    # declined — still process original but skip preference actions
                     response = eng.process(user_input)
             except Exception as e:
                 log.error(f"Followup error: {e}")
