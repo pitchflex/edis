@@ -1,12 +1,13 @@
 # Pluggable LLM backend — Groq (primary), Gemini (fallback), Ollama (offline)
+# All backends use KeyRotator for automatic key rotation on rate limits.
 
 import base64
 import logging
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Generator
 
 import settings
+from core import key_rotator as kr
 
 log = logging.getLogger(__name__)
 
@@ -27,112 +28,175 @@ class LLMBackend(ABC):
 
 
 class GroqBackend(LLMBackend):
-    def __init__(self):
-        from groq import Groq
-        self._client = Groq(api_key=settings.GROQ_API_KEY)
-
     @property
     def name(self):
         return "groq"
 
+    def _client(self, key: str):
+        from groq import Groq
+        return Groq(api_key=key)
+
     def chat(self, messages: list, tools: list = None, stream: bool = False) -> str:
-        kwargs = {
-            "model": settings.GROQ_VOICE_MODEL,
-            "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 1024,
-        }
-        if tools:
-            kwargs["tools"] = tools
-            kwargs["tool_choice"] = "auto"
-        if stream:
-            kwargs["stream"] = True
-            return self._stream(kwargs)
+        import groq as groq_lib
+        last_err = None
+        for _ in range(kr._rotators["groq"].total_count() or 1):
+            key = kr.get("groq")
+            if not key:
+                raise RuntimeError("All Groq API keys exhausted")
+            try:
+                client = self._client(key)
+                kwargs = {
+                    "model": settings.GROQ_VOICE_MODEL,
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "max_tokens": 1024,
+                }
+                if tools:
+                    kwargs["tools"] = tools
+                    kwargs["tool_choice"] = "auto"
+                if stream:
+                    kwargs["stream"] = True
+                    return self._stream(client, kwargs)
+                response = client.chat.completions.create(**kwargs)
+                kr.mark_ok("groq", key)
+                return self._parse(response)
+            except groq_lib.RateLimitError as e:
+                kr.mark_failed("groq", key, "rate limit")
+                last_err = e
+            except groq_lib.AuthenticationError as e:
+                kr.mark_failed("groq", key, "auth error")
+                last_err = e
+            except Exception as e:
+                last_err = e
+                break
+        raise last_err or RuntimeError("Groq chat failed")
 
-        response = self._client.chat.completions.create(**kwargs)
-        return self._parse(response)
-
-    def _stream(self, kwargs) -> Generator:
-        for chunk in self._client.chat.completions.create(**kwargs):
+    def _stream(self, client, kwargs) -> Generator:
+        for chunk in client.chat.completions.create(**kwargs):
             delta = chunk.choices[0].delta
             if delta.content:
                 yield delta.content
 
     def _parse(self, response):
         msg = response.choices[0].message
-        # return tool calls if present, else text
         if msg.tool_calls:
             return msg
         return msg.content or ""
 
     def vision(self, image_path: str, prompt: str) -> str:
+        import groq as groq_lib
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
-        response = self._client.chat.completions.create(
-            model=settings.GROQ_VISION_MODEL,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
-                ],
-            }],
-            max_tokens=512,
-        )
-        return response.choices[0].message.content
+        last_err = None
+        for _ in range(kr._rotators["groq"].total_count() or 1):
+            key = kr.get("groq")
+            if not key:
+                raise RuntimeError("All Groq API keys exhausted")
+            try:
+                client = self._client(key)
+                response = client.chat.completions.create(
+                    model=settings.GROQ_VISION_MODEL,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {
+                                "url": f"data:image/png;base64,{b64}"
+                            }},
+                        ],
+                    }],
+                    max_tokens=512,
+                )
+                kr.mark_ok("groq", key)
+                return response.choices[0].message.content
+            except groq_lib.RateLimitError as e:
+                kr.mark_failed("groq", key, "rate limit")
+                last_err = e
+            except groq_lib.AuthenticationError as e:
+                kr.mark_failed("groq", key, "auth error")
+                last_err = e
+            except Exception as e:
+                last_err = e
+                break
+        raise last_err or RuntimeError("Groq vision failed")
 
 
 class GeminiBackend(LLMBackend):
-    def __init__(self):
-        import google.generativeai as genai
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        self._genai = genai
-        self._model = genai.GenerativeModel(settings.GEMINI_MODEL)
-        self._vision_model = genai.GenerativeModel(settings.GEMINI_VISION_MODEL)
-
     @property
     def name(self):
         return "gemini"
 
     def chat(self, messages: list, tools: list = None, stream: bool = False) -> str:
-        # convert OpenAI-style messages to Gemini format
-        history = []
-        system_text = ""
-        for m in messages:
-            if m["role"] == "system":
-                system_text = m["content"]
-            elif m["role"] == "user":
-                history.append({"role": "user", "parts": [m["content"]]})
-            elif m["role"] == "assistant":
-                history.append({"role": "model", "parts": [m["content"]]})
-
-        model = self._genai.GenerativeModel(
-            settings.GEMINI_MODEL,
-            system_instruction=system_text if system_text else None,
-        )
-        chat = model.start_chat(history=history[:-1] if history else [])
-        last = history[-1]["parts"][0] if history else ""
-        response = chat.send_message(last)
-        return response.text
+        import google.generativeai as genai
+        from google.api_core.exceptions import ResourceExhausted, PermissionDenied
+        last_err = None
+        for _ in range(kr._rotators["gemini"].total_count() or 1):
+            key = kr.get("gemini")
+            if not key:
+                raise RuntimeError("All Gemini API keys exhausted")
+            try:
+                genai.configure(api_key=key)
+                system_text = next((m["content"] for m in messages if m["role"] == "system"), "")
+                history = [
+                    {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]}
+                    for m in messages if m["role"] in ("user", "assistant")
+                ]
+                model = genai.GenerativeModel(
+                    settings.GEMINI_MODEL,
+                    system_instruction=system_text or None,
+                )
+                chat = model.start_chat(history=history[:-1] if history else [])
+                last_msg = history[-1]["parts"][0] if history else ""
+                response = chat.send_message(last_msg)
+                kr.mark_ok("gemini", key)
+                return response.text
+            except ResourceExhausted as e:
+                kr.mark_failed("gemini", key, "rate limit")
+                last_err = e
+            except PermissionDenied as e:
+                kr.mark_failed("gemini", key, "auth error")
+                last_err = e
+            except Exception as e:
+                last_err = e
+                break
+        raise last_err or RuntimeError("Gemini chat failed")
 
     def vision(self, image_path: str, prompt: str) -> str:
+        import google.generativeai as genai
         import PIL.Image
-        img = PIL.Image.open(image_path)
-        response = self._vision_model.generate_content([prompt, img])
-        return response.text
+        from google.api_core.exceptions import ResourceExhausted, PermissionDenied
+        last_err = None
+        for _ in range(kr._rotators["gemini"].total_count() or 1):
+            key = kr.get("gemini")
+            if not key:
+                raise RuntimeError("All Gemini API keys exhausted")
+            try:
+                genai.configure(api_key=key)
+                model = genai.GenerativeModel(settings.GEMINI_VISION_MODEL)
+                img = PIL.Image.open(image_path)
+                response = model.generate_content([prompt, img])
+                kr.mark_ok("gemini", key)
+                return response.text
+            except ResourceExhausted as e:
+                kr.mark_failed("gemini", key, "rate limit")
+                last_err = e
+            except PermissionDenied as e:
+                kr.mark_failed("gemini", key, "auth error")
+                last_err = e
+            except Exception as e:
+                last_err = e
+                break
+        raise last_err or RuntimeError("Gemini vision failed")
 
 
 class OllamaBackend(LLMBackend):
-    def __init__(self):
-        import ollama as _ollama
-        self._ollama = _ollama
-
     @property
     def name(self):
         return "ollama"
 
     def chat(self, messages: list, tools: list = None, stream: bool = False) -> str:
-        response = self._ollama.chat(
+        import ollama as _ollama
+        response = _ollama.chat(
             model=settings.OLLAMA_MODEL,
             messages=messages,
             stream=False,
@@ -140,9 +204,10 @@ class OllamaBackend(LLMBackend):
         return response["message"]["content"]
 
     def vision(self, image_path: str, prompt: str) -> str:
+        import ollama as _ollama
         with open(image_path, "rb") as f:
             img_bytes = f.read()
-        response = self._ollama.chat(
+        response = _ollama.chat(
             model="moondream",
             messages=[{
                 "role": "user",
@@ -155,9 +220,9 @@ class OllamaBackend(LLMBackend):
 
 def _build_backend(name: str) -> LLMBackend | None:
     try:
-        if name == "groq" and settings.GROQ_API_KEY:
+        if name == "groq" and kr._rotators.get("groq", kr.KeyRotator("groq", [])).has_any():
             return GroqBackend()
-        if name == "gemini" and settings.GEMINI_API_KEY:
+        if name == "gemini" and kr._rotators.get("gemini", kr.KeyRotator("gemini", [])).has_any():
             return GeminiBackend()
         if name == "ollama":
             return OllamaBackend()
@@ -167,7 +232,7 @@ def _build_backend(name: str) -> LLMBackend | None:
 
 
 class LLM:
-    """Unified LLM interface with automatic fallback."""
+    """Unified LLM interface with automatic key rotation and provider fallback."""
 
     def __init__(self):
         self._primary = _build_backend(settings.LLM_PRIMARY)
@@ -177,27 +242,28 @@ class LLM:
         if self._fallback:
             log.info(f"LLM fallback: {self._fallback.name}")
         if not self._primary and not self._fallback:
-            raise RuntimeError("No LLM backend available. Set groq_key or gemini_key in config.toml")
+            raise RuntimeError(
+                "No LLM backend available. Add keys to config.toml"
+            )
 
     def chat(self, messages: list, tools: list = None, stream: bool = False) -> str:
         backend = self._primary or self._fallback
         try:
             return backend.chat(messages, tools=tools, stream=stream)
         except Exception as e:
-            log.warning(f"{backend.name} failed: {e}, trying fallback")
+            log.warning(f"{backend.name} failed: {e}")
             if self._fallback and self._fallback is not backend:
+                log.info(f"Falling back to {self._fallback.name}")
                 return self._fallback.chat(messages, tools=tools, stream=stream)
             raise
 
     def vision(self, image_path: str, prompt: str) -> str:
-        # prefer the configured vision backend
-        vision_name = settings.LLM_VISION_MODEL
-        backend = _build_backend(vision_name) or self._primary or self._fallback
+        vision_backend = _build_backend(settings.LLM_VISION_MODEL) or self._primary or self._fallback
         try:
-            return backend.vision(image_path, prompt)
+            return vision_backend.vision(image_path, prompt)
         except Exception as e:
-            log.warning(f"Vision failed on {backend.name}: {e}")
-            if self._fallback and self._fallback is not backend:
+            log.warning(f"Vision failed on {vision_backend.name}: {e}")
+            if self._fallback and self._fallback is not vision_backend:
                 return self._fallback.vision(image_path, prompt)
             raise
 

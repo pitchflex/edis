@@ -4,10 +4,22 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [api]
+# Single key: groq_key = "gsk_abc"
+# Multiple keys for rotation: groq_keys = ["gsk_abc", "gsk_def", "gsk_xyz"]
+# groq_keys takes priority over groq_key if both are set.
+
 groq_key        = ""          # free at console.groq.com
+groq_keys       = []          # add multiple keys for rotation
+
 gemini_key      = ""          # free at aistudio.google.com
+gemini_keys     = []          # add multiple keys for rotation
+
 elevenlabs_key  = ""          # optional, leave empty to use Piper (local/free)
+elevenlabs_keys = []
+
 openweather_key = ""          # free at openweathermap.org
+openweather_keys= []
+
 spotify_id      = ""
 spotify_secret  = ""
 ollama_model    = "phi4-mini" # local fallback, always free
@@ -93,6 +105,11 @@ startup_sound = true
 morning_time = "07:30"
 evening_time = "21:00"
 news_topics  = []
+
+[obsidian]
+enabled                 = true
+vault_path              = "~/Documents/EDIS-Vault"  # change to your vault path
+sync_interval_seconds   = 30
 
 [system]
 log_level = "info"

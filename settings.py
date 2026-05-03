@@ -33,11 +33,30 @@ if CONFIG_FILE.exists():
 def _get(section: str, key: str, default):
     return _cfg.get(section, {}).get(key, default)
 
-# ── API Keys ──────────────────────────────────────────────────────────────────
-GROQ_API_KEY       = _get("api", "groq_key", "")
-GEMINI_API_KEY     = _get("api", "gemini_key", "")
-ELEVENLABS_API_KEY = _get("api", "elevenlabs_key", "")
-OPENWEATHER_KEY    = _get("api", "openweather_key", "")
+# ── API Keys — single key or list of keys (rotation) ─────────────────────────
+# Single key:  groq_key   = "gsk_abc"
+# Multi keys:  groq_keys  = ["gsk_abc", "gsk_def", "gsk_xyz"]
+# If both are set, groq_keys takes priority.
+
+def _key_list(single_field: str, multi_field: str) -> list[str]:
+    multi = _get("api", multi_field, [])
+    if isinstance(multi, list) and any(k.strip() for k in multi):
+        return [k.strip() for k in multi if k.strip()]
+    single = _get("api", single_field, "").strip()
+    return [single] if single else []
+
+GROQ_API_KEY        = _get("api", "groq_key", "")
+GROQ_API_KEYS       = _key_list("groq_key", "groq_keys")
+
+GEMINI_API_KEY      = _get("api", "gemini_key", "")
+GEMINI_API_KEYS     = _key_list("gemini_key", "gemini_keys")
+
+ELEVENLABS_API_KEY  = _get("api", "elevenlabs_key", "")
+ELEVENLABS_API_KEYS = _key_list("elevenlabs_key", "elevenlabs_keys")
+
+OPENWEATHER_KEY     = _get("api", "openweather_key", "")
+OPENWEATHER_KEYS    = _key_list("openweather_key", "openweather_keys")
+
 SPOTIFY_CLIENT_ID  = _get("api", "spotify_id", "")
 SPOTIFY_SECRET     = _get("api", "spotify_secret", "")
 OLLAMA_MODEL       = _get("api", "ollama_model", "phi4-mini")

@@ -175,6 +175,12 @@ def startup():
               settings.PIPER_DIR, settings.SCREENSHOT_TMP.parent]:
         d.mkdir(parents=True, exist_ok=True)
 
+    # init key rotators before anything else touches the APIs
+    from core.key_rotator import init_rotators, status_all
+    init_rotators()
+    for s in status_all():
+        log.info(f"Keys: {s}")
+
     # check critical dependencies
     _check_deps()
 
