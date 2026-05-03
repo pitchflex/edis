@@ -1,31 +1,48 @@
-# EDIS — Python dependencies
-# Install: pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
+#  E.D.I.S — Enhanced Digital Intelligence System
+#  requirements.txt — every Python dependency
+#  Install: pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
 
-# LLM backends (zero cost free tiers)
-groq
-google-generativeai
-ollama
+# ── LLM Backends (zero cost free tiers) ──────────────────────────────────────
+groq                        # primary — free at console.groq.com
+google-generativeai         # fallback — free at aistudio.google.com
+ollama                      # offline fallback — local models via Ollama
 
-# Voice — STT
-faster-whisper
+# ── Voice — Speech to Text ────────────────────────────────────────────────────
+faster-whisper              # local Whisper STT, int8 quantized, low RAM
 
-# Voice — wake word
-openwakeword
+# ── Voice — Wake Word ─────────────────────────────────────────────────────────
+openwakeword                # wake word detection ("edis")
 
-# Audio
-sounddevice
-numpy
+# ── Audio I/O ─────────────────────────────────────────────────────────────────
+sounddevice                 # cross-platform mic recording
+numpy                       # audio array processing
 
-# Memory
-chromadb
+# ── Memory — Vector / Semantic ────────────────────────────────────────────────
+chromadb                    # embedded vector DB for semantic memory search
 
-# System
-psutil
-pyperclip
-pydbus
-Pillow
+# ── Memory — Structured (Memori-style) ───────────────────────────────────────
+# sqlite3 is Python stdlib — no install needed
 
-# Utils
-tomli; python_version < "3.11"
-watchdog
-requests
+# ── GUI Automation ────────────────────────────────────────────────────────────
+Pillow                      # screenshot image processing for vision loop
+# ydotool is a system binary — installed via: sudo dnf install ydotool
+# grim    is a system binary — installed via: sudo dnf install grim
+
+# ── Clipboard Intelligence ────────────────────────────────────────────────────
+pyperclip                   # cross-platform clipboard read/write
+
+# ── System Monitoring (proactivity) ──────────────────────────────────────────
+psutil                      # CPU, RAM, battery, temperature monitoring
+
+# ── D-Bus (Python ↔ GNOME Shell extension) ───────────────────────────────────
+pydbus                      # D-Bus session bus bindings
+PyGObject                   # gi.repository (GLib, Gio) — may need: sudo dnf install python3-gobject
+
+# ── Config parsing ────────────────────────────────────────────────────────────
+tomli; python_version < "3.11"   # TOML parser for Python < 3.11 (3.11+ has tomllib built-in)
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+requests                    # HTTP requests (web search, APIs)
+watchdog                    # config file hot-reload watching
