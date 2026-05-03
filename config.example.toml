@@ -1,0 +1,98 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  E.D.I.S  —  Enhanced Digital Intelligence System
+#  config.toml  —  Edit this file to configure EDIS
+# ─────────────────────────────────────────────────────────────────────────────
+
+[api]
+groq_key        = ""          # free at console.groq.com
+gemini_key      = ""          # free at aistudio.google.com
+elevenlabs_key  = ""          # optional, leave empty to use Piper (local/free)
+openweather_key = ""          # free at openweathermap.org
+spotify_id      = ""
+spotify_secret  = ""
+ollama_model    = "phi4-mini" # local fallback, always free
+
+[llm]
+primary         = "groq"      # groq | gemini | ollama
+fallback        = "ollama"    # used when primary hits rate limit
+voice_model     = "groq"      # fast model for voice responses
+reasoning_model = "gemini"    # smarter model for memory/proactivity
+vision_model    = "groq"      # model used for screen analysis
+
+[voice]
+hotkey           = "<Super>e"
+wake_word        = "edis"
+wake_sensitivity = 0.7
+tts_voice        = "en_US-amy-medium"
+whisper_model    = "small"
+whisper_device   = "cpu"      # cpu | cuda
+
+[memory]
+max_episodes     = 2000
+semantic_results = 5
+auto_extract     = true
+consolidate_hour = 3          # 3am nightly consolidation
+
+[proactive]
+enabled           = true
+morning_briefing  = "07:30"
+dnd_start         = "23:00"
+dnd_end           = "07:00"
+battery_alert     = 20        # % threshold
+break_remind_min  = 90        # minutes before nudging a break
+max_interrupts_per_hour = 3
+
+[focus_monitor]
+enabled            = true
+check_interval_min = 8        # minimum minutes between screen checks
+check_interval_max = 20       # maximum minutes between screen checks
+alert_tone         = "gentle" # gentle | firm | strict
+delete_after_check = true     # never keep screenshots on disk
+
+[gui]
+enabled              = true
+show_on_screen       = true
+action_delay_ms      = 400    # ms between automation actions
+max_steps            = 25
+use_accessibility    = true   # prefer AT-SPI2 over vision when available
+confirm_before_send  = true   # ask before sending messages/emails
+
+[files]
+search_hidden  = false
+confirm_delete = true
+read_max_kb    = 512
+exclude_dirs   = [".git", "node_modules", "__pycache__", ".cache", ".local/share/Trash"]
+
+[workspace]
+enabled = true
+
+[clipboard]
+watch        = true
+intelligence = true
+
+[ui]
+island_width       = 420
+idle_after_seconds = 120
+accent_color       = "#00d4ff"
+log_max_lines      = 50
+font               = "JetBrains Mono 10"
+
+[interrupt]
+sound = true
+
+[privacy]
+screen_capture    = true
+log_distractions  = true
+
+[personality]
+user_name = "Sir"
+style     = "formal_witty"
+startup_sound = true
+
+[briefing]
+morning_time = "07:30"
+evening_time = "21:00"
+news_topics  = []
+
+[system]
+log_level = "info"

@@ -1,0 +1,31 @@
+# EDIS — Python dependencies
+# Install: pip install -r requirements.txt
+
+# LLM backends (zero cost free tiers)
+groq
+google-generativeai
+ollama
+
+# Voice — STT
+faster-whisper
+
+# Voice — wake word
+openwakeword
+
+# Audio
+sounddevice
+numpy
+
+# Memory
+chromadb
+
+# System
+psutil
+pyperclip
+pydbus
+Pillow
+
+# Utils
+tomli; python_version < "3.11"
+watchdog
+requests

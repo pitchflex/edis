@@ -1,0 +1,8 @@
+{
+  "name": "EDIS",
+  "description": "Enhanced Digital Intelligence System — Dynamic Island UI",
+  "uuid": "edis@edis.ai",
+  "version": 1,
+  "shell-version": ["45", "46", "47", "48"],
+  "url": ""
+}

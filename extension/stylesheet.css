@@ -1,0 +1,94 @@
+/* EDIS Dynamic Island stylesheet */
+
+.edis-island {
+  background-color: rgba(0, 0, 0, 0.88);
+  border-radius: 20px;
+  padding: 8px 16px;
+  min-width: 120px;
+  transition-duration: 300ms;
+  transition-timing-function: ease-in-out;
+}
+
+.edis-island-idle {
+  background-color: rgba(0, 212, 255, 0.15);
+  border-radius: 2px;
+  min-width: 80px;
+  min-height: 2px;
+  padding: 0;
+  transition-duration: 500ms;
+}
+
+.edis-island-listening {
+  background-color: rgba(0, 212, 255, 0.12);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  min-width: 260px;
+}
+
+.edis-island-working {
+  background-color: rgba(255, 160, 0, 0.1);
+  border: 1px solid rgba(255, 160, 0, 0.3);
+  min-width: 320px;
+}
+
+.edis-name {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #00d4ff;
+  letter-spacing: 2px;
+}
+
+.edis-status {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.edis-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background-color: #00d4ff;
+}
+
+.edis-dot-listening {
+  background-color: #00ff88;
+}
+
+.edis-dot-thinking {
+  background-color: #ffaa00;
+}
+
+.edis-dot-working {
+  background-color: #ff6600;
+}
+
+.edis-log-area {
+  min-width: 400px;
+  max-width: 420px;
+}
+
+.edis-log-entry {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.edis-log-user {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.edis-log-edis {
+  color: #00d4ff;
+}
+
+.edis-log-tool {
+  color: rgba(255, 160, 0, 0.8);
+  font-size: 9px;
+}
+
+.edis-tray-icon {
+  padding: 0 4px;
+  color: #00d4ff;
+}
